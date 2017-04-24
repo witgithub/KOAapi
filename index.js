@@ -1,13 +1,17 @@
 const Koa = require('koa');
+const handleError = require('koa-handle-error');
 const Router = require('koa-router');
 const  mongoose = require('mongoose');
 const app = new Koa();
 const router = new Router();
 const cors = require('koa-cors');
 const bodyParser = require('koa-bodyparser');
+
 mongoose.connect('mongodb://localhost/test');
 // var MyModel = mongoose.model('users')
-
+const onError = err => {
+  console.error(err);
+};
 
 var userSchema = mongoose.Schema({
     name: String,
@@ -37,10 +41,14 @@ router.get('/dupaa', (ctx, next) => {ctx.body = "dupa"});
 router.get('/', (ctx, next) => {ctx.body = "StarterRoute"});
 // router.get('/:id', (ctx, next) => {ctx.body = ctx.params.id + ' to pedal;-)'});
 
- router.get('/users', async ctx => ctx.body = await User.find())
+ router.get('/users', async ctx => {ctx.body = await User.find();
+                                    console.log(ctx.request.body);
+})
        .post('/users', async(ctx, next) => {
         console.log(ctx.request.body,'CTX');
         ctx.body = await new User(ctx.request.body).save();
+       
+        
       })
       .get('/users/:id', async (ctx, next) => ctx.body = await User.findById(ctx.params.id))
       .put('/users/:id', async (ctx, next) => ctx.body = await User.findByIdAndUpdate(ctx.params.id, ctx.request.body))
@@ -50,6 +58,16 @@ router.get('/', (ctx, next) => {ctx.body = "StarterRoute"});
 );
 
 app
+.use(async (ctx, next) => {
+  try {
+    await next();
+  } catch (err) {
+    err.status = err.statusCode || err.status || 400;
+    throw err;
+  }
+})
+  .use(handleError(onError))
+
   .use(bodyParser())
   .use(cors())
   .use(router.routes())
